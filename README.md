@@ -8,11 +8,10 @@ Two versions of the same miniature schema library, cut down from [Zod](https://g
 | [`shipped.ts`](shipped.ts) — written the way Zod ships | 0 | 0 |
 
 ```
-npx tsc --noEmit --strict idiomatic.ts   # 11 errors
-npx tsc --noEmit --strict shipped.ts     # none
+npx tsc --noEmit -p tsconfig.json
 ```
 
-Same result on TypeScript 5.5.4, on 5.9.3, and on the Go port. Nothing to install beyond a compiler.
+11 errors, all of them in `idiomatic.ts`. Same result on TypeScript 7 (`7.0.0-dev.20260707.2`), on `tsc` 5.9.3 and on 5.5.4, so this is not new and not specific to the Go port.
 
 ## The difference
 
@@ -61,7 +60,7 @@ It compiles. The cost is that the library stops describing its own types: constr
 Reductions of the shapes that trigger the failure — heritage threading, indexed access, wrapper chains, discriminated unions, mutual recursion. Several are deliberately broken alternative formulations kept for comparison, so they report unrelated errors on any compiler. Count `TS7022`, `TS7023` and `TS2502` rather than the total:
 
 ```
-npx tsc --noEmit -p tsconfig.json | grep -cE 'error TS(7022|7023|2502)'
+npx tsc --noEmit -p probes/tsconfig.json | grep -cE 'error TS(7022|7023|2502)'
 ```
 
-76 on the Go port's `main` and 0 with the PR; 77 on `tsc` 5.9.3, the one difference being unrelated to the getter case.
+76 on TypeScript 7 and 0 with the PR. `tsc` 5.9.3 reports 77, the extra one unrelated to the getter case.
