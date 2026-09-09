@@ -53,11 +53,19 @@ const Category = object({
 | single signature | 2 | **0** |
 | same code, one extra overload | 2 | **2** |
 
-**This one has a candidate fix.** Deferral was gated on `len(s.candidates) == 1` in `chooseOverload`. The gate is unnecessary, because the constraint is revalidated in full on the signature that is finally selected, so a candidate cannot be chosen on an unvalidated constraint without that constraint being checked afterwards. Removing the gate is a three-line change: [`colinhacks/TypeScript@recursive-getter-limits`](https://github.com/colinhacks/TypeScript/tree/recursive-getter-limits).
+**The gate is load-bearing. Removing it is unsound.** Deferral is gated on `len(s.candidates) == 1` in `chooseOverload`. Removing that gate does make the overloaded fixture resolve, Zod's corpus stays at 22, and full conformance stays clean — but conformance does not cover the case that matters:
 
-With it, the overloaded fixture resolves to `Schema<{ name: string; readonly subcategories: any[]; }> & ...` and is enforced, rather than collapsing to `any`. Zod's corpus is unchanged at 22. Full conformance is clean — exit 0, 63 packages, no baseline movement. All three of RyanCavanaugh's soundness repros still behave correctly, including the rejected-overload one that this gate was protecting.
+```ts
+declare function object<S extends Record<string, Schema<any>>>(shape: S): { tag: "strict" };
+declare function object<S extends Record<string, unknown>>(shape: S): { tag: "loose" };
 
-Two existing baselines change, and both improve: `recursiveGetterConstraintRejectedOverload` loses its `TS7022`/`TS7023` implicit-any errors while keeping the assignability error that proves which overload won, and `recursiveGetterConstraintRejectedOverloadCrossFile` — whose only two errors were those implicit-any failures — compiles clean. They were pinning the limitation.
+const tree = object({ get bad() { return 42; } });
+const which: "loose" = tree.tag;   // { bad: number } is not a Record<string, Schema<any>>
+```
+
+Stock TypeScript and the fix both select `"loose"` correctly. With the gate removed, `"strict"` is selected and an error is reported from a candidate that should have been rejected — exactly the failure RyanCavanaugh identified in the original pull request.
+
+The existing rejected-overload tests disambiguate their signatures with a string-literal argument, so the constraint is never the deciding factor there and they do not catch this. A regression test pinning it is on [`colinhacks/TypeScript@recursive-getter-limits`](https://github.com/colinhacks/TypeScript/tree/recursive-getter-limits).
 
 Overloaded callable interfaces behave the same way. This is not an edge case in the ecosystem: a builder with an optional-config or optional-name overload is a very common API shape, and every one of them gets nothing from the fix. Zod is on the right side of this only because `z.object` has a single signature.
 
