@@ -12,7 +12,7 @@ Measured against [`jakebailey/TypeScript@e707147a48`](https://github.com/jakebai
 | --- | --- | --- |
 | [`00-works-getter`](00-works-getter.ts) | 2 | **0** |
 | [`01-works-mutual`](01-works-mutual.ts) | 4 | **0** |
-| [`02-limit-overload`](02-limit-overload.ts) | 2 | 2 |
+| [`02-limit-overload`](02-limit-overload.ts) | 2 | 2 — **0** with the [candidate fix](https://github.com/colinhacks/TypeScript/tree/recursive-getter-limits) |
 | [`03-limit-callback-property`](03-limit-callback-property.ts) | 2 | 2 |
 | [`04-workaround-annotated-callback`](04-workaround-annotated-callback.ts) | 0 | 0 |
 | [`05-limit-spread`](05-limit-spread.ts) | 2 | 2 |
