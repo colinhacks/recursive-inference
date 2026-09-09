@@ -2,6 +2,30 @@
 
 Measured against [`jakebailey/TypeScript@e707147a48`](https://github.com/jakebailey/TypeScript/tree/fix-recursive-getter-resolution) (branch `fix-recursive-getter-resolution`), with a control built from its exact merge-base `10404f71a8`. Every number below comes from binaries built from clean trees on 2026-09-09. Counts are `TS7022` + `TS7023` ("implicitly has type any") unless stated otherwise.
 
+## Status: which of these are fixable
+
+Three of these limitations have since been fixed and the fixes compose on one branch ([`colinhacks/TypeScript@combined`](https://github.com/colinhacks/TypeScript/tree/combined), built on Jake's tip). One is inherent. The rest are unattempted or out of reach by construction.
+
+| limitation | status | branch |
+| --- | --- | --- |
+| 1 — any second overload disables the fix | **inherent, not fixable** | — |
+| 2 — a callback property gets nothing | **fixed** | [`attempt-callback`](https://github.com/colinhacks/TypeScript/tree/attempt-callback) |
+| 3 — a spread in the recursive literal | **fixed** | [`attempt-spread`](https://github.com/colinhacks/TypeScript/tree/attempt-spread) |
+| 4 — the getter is itself the inference site | inherent | — |
+| 5 — a context-sensitive sibling in the same call | unattempted | — |
+| 6 — a callback passed directly as an argument | **fixed** | [`attempt-argument`](https://github.com/colinhacks/TypeScript/tree/attempt-argument) |
+| 7 — declaration emit still elides the recursion | inherent to `.d.ts` | — |
+
+On the composed branch, fixtures 03, 05 and 06 all go to 0. The Zod corpus stays at 22 with an identical error set, conformance is clean (exit 0, 0 baselines moved), and planted errors at depths 1 through 5 are all rejected — on real Zod, not only the micro-library. Limitation 1 is pinned as inherent by a regression test: removing the single-candidate gate resolves the wrong overload and reports a diagnostic from a rejected candidate.
+
+### A generalization that looked right and was wrong
+
+The limitation 6 fix gates on a call initializer. Limitation 2 is the same shape with an arrow initializer, so relaxing the gate to accept arrows appears to unify them — and it passes the fixtures, the Zod corpus, the soundness repros, the overload discriminator and planted errors at depth.
+
+Full conformance rejects it: 40 baselines move, all contextual typing. The concrete damage is that `f2({ foo: s => s.hmm })` stops reporting an error, because deferring the property's typing destroys the contextual type that gives `s` its `string`.
+
+**Deferring the typing of a function-valued property breaks contextual typing across the language. Deferring only its constraint check does not.** That is why these two limitations need two mechanisms despite looking like one shape.
+
 ## What it does
 
 When TypeScript infers a type argument it checks the inferred type against the type parameter's constraint straight away. For a recursive schema that check forces a getter whose type is the thing being inferred, so it cycles and collapses to `any`.
@@ -71,6 +95,8 @@ Overloaded callable interfaces behave the same way. This is not an edge case in 
 
 ## Limitation 2 — a callback property gets nothing; only get-accessors are recognized
 
+**Fixed** on [`attempt-callback`](https://github.com/colinhacks/TypeScript/tree/attempt-callback) (68 lines in `inference.go`): a function-valued property whose un-annotated body names a declaration still being resolved is treated like a getter for the constraint check only. Its contextual typing is untouched, which is what keeps the fix sound. Fixture 03 goes 2 → 0.
+
 The look-ahead tests one thing: does this object literal have a property flagged as a get-accessor. A property holding a function is invisible to it, even though it expresses the identical idea — a body whose type is computed later.
 
 Same library, same recursion, same meaning. Only the syntax differs:
@@ -98,6 +124,8 @@ const Category = object({
 The third row is the workaround users pay today, and it is exactly what Drizzle documents: `references((): AnyPgColumn => employees.id)`. Libraries that use a callback for forward references — Drizzle, TypeORM, TanStack-style builders — are unaffected by the fix and keep paying that tax at every call site.
 
 ## Limitation 3 — a spread in the recursive literal
+
+**Fixed** on [`attempt-spread`](https://github.com/colinhacks/TypeScript/tree/attempt-spread) (~40 lines): the spread copy of a getter resolves lazily instead of forcing it. Fixture 05 goes 2 → 0. One residual hole needs both an inline object-literal spread and a getter overriding a same-named property from it; hoisting the source or using distinct names works.
 
 ```ts
 const base = z.object({ id: z.string() });
@@ -134,6 +162,8 @@ object(shape, (code: number) => {})  // annotating the parameter restores it
 An un-annotated method sitting beside the getter inside the same literal behaves the same way. `defineComponent({ props, setup(p) {} })` is this shape. A chained `.refine((v) => ...)` *after* the call is fine.
 
 ## Limitation 6 — a callback passed directly as an argument
+
+**Fixed** on [`attempt-argument`](https://github.com/colinhacks/TypeScript/tree/attempt-argument) (75 lines): a call-initialized property whose callback names a declaration under resolution is typed lazily through its own symbol, as an accessor already is. Fixture 06 goes 3 errors → 1 (the deliberate reveal). This is the `z.lazy` shape, so the documented Zod idiom now infers. The bare `const Self = lazy(() => Self)` is still out of reach — there is no position between the variable and the callback where a lazy type can live.
 
 The look-ahead walks the properties of object literals. A callback passed as the whole argument is never examined.
 
