@@ -152,6 +152,8 @@ define({ name: "x", get fields() { return ...; } })   // fails: 2 on control, 2 
 
 ## Limitation 5 — a context-sensitive sibling in the same call
 
+**Unattempted, and orthogonal to the other fixes.** Measured on the composed branch, the recursive member fails here in all three forms — a getter, a `lazy(...)` call property, and a callback property — and a named function expression fails the same way. Annotating the sibling's parameter fixes all three. So this is a property of the call's argument list, not of how the recursive member is written: context-sensitive arguments are inferred in a second pass and the deferral does not survive it.
+
 An un-annotated callback elsewhere in the same call partially defeats it.
 
 ```ts
