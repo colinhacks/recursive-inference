@@ -13,6 +13,12 @@ npx tsc --noEmit -p tsconfig.json
 
 11 errors, all of them in `idiomatic.ts`. Same result on TypeScript 7 (`7.0.0-dev.20260707.2`), on `tsc` 5.9.3 and on 5.5.4, so this is not new and not specific to the Go port.
 
+## Limitations
+
+[`limitations/`](limitations/) isolates each shape the fix does and does not cover, one file per case, with a runner that prints both compilers side by side. [`LIMITATIONS.md`](LIMITATIONS.md) is the full write-up.
+
+The two that matter most for other libraries: **any second overload on the builder disables the fix**, and **a callback property gets nothing where a getter works** — which is the shape Drizzle and TypeORM use for forward references.
+
 ## The difference
 
 A schema library expresses a self-referential schema with a getter, because the type is not nameable before it exists:
