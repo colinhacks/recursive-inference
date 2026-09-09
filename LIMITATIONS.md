@@ -152,7 +152,10 @@ define({ name: "x", get fields() { return ...; } })   // fails: 2 on control, 2 
 
 ## Limitation 5 — a context-sensitive sibling in the same call
 
-**Unattempted, and orthogonal to the other fixes.** Measured on the composed branch, the recursive member fails here in all three forms — a getter, a `lazy(...)` call property, and a callback property — and a named function expression fails the same way. Annotating the sibling's parameter fixes all three. So this is a property of the call's argument list, not of how the recursive member is written: context-sensitive arguments are inferred in a second pass and the deferral does not survive it.
+**Attempted and diagnosed, not fixed.** Measured on the composed branch, the recursive member fails here in all three forms — a getter, a `lazy(...)` call property, and a callback property — and a named function expression fails the same way. Annotating the sibling's parameter fixes all three. So this is a property of the call's argument list, not of how the recursive member is written: context-sensitive arguments are inferred in a second pass and the deferral does not survive it.
+
+
+Three separate sites force the accessor here, and patching one only reveals the next: `transformTypeOfMembers` (reached from `getRegularTypeOfObjectLiteral` during the applicability check), subtype reduction over the two inference candidates (which are the same object literal, one per pass), and an assignability comparison inside `getInferredType`. Jake's deferral gate is fully satisfied in the failing case, so the constraint check is not the forcing point. Every other limitation here was one site with one guard; this one is a chain through hot, general paths, and a workaround already exists — annotate the sibling's parameter.
 
 An un-annotated callback elsewhere in the same call partially defeats it.
 
