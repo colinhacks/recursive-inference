@@ -19,6 +19,12 @@ Measured against [`jakebailey/TypeScript@e707147a48`](https://github.com/jakebai
 | [`06-limit-direct-callback-argument`](06-limit-direct-callback-argument.ts) | 1 | 1 |
 | [`07-limit-context-sensitive-sibling`](07-limit-context-sensitive-sibling.ts) | 2 | 2 |
 
+[`08-limit-standard-property`](08-limit-standard-property.ts) came later, once [microsoft/TypeScript#64311](https://github.com/microsoft/TypeScript/pull/64311) had merged. Baseline is the `7.1.0-dev.20260924.1` nightly, candidate a build of [microsoft/TypeScript#64413](https://github.com/microsoft/TypeScript/pull/64413):
+
+| fixture | baseline | candidate |
+| --- | --- | --- |
+| [`08-limit-standard-property`](08-limit-standard-property.ts) | 1 | **0** |
+
 Counts are `TS7022` + `TS7023` ("implicitly has type `any`"). Zero means the recursion resolved.
 
 The `reveal` line at the bottom of each fixture errors on purpose: assigning to `never` makes the compiler print the resolved type in the error message. That is how to tell a genuine resolution from a collapse to `any` — **an error count alone cannot**, because under `noErrorTruncation` the printer renders a recursive type's cycle point as `any` too.

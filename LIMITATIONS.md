@@ -15,6 +15,7 @@ Three of these limitations have since been fixed and the fixes compose on one br
 | 5 — a context-sensitive sibling in the same call | unattempted | — |
 | 6 — a callback passed directly as an argument | **fixed** | [`attempt-argument`](https://github.com/colinhacks/TypeScript/tree/attempt-argument) |
 | 7 — declaration emit still elides the recursion | inherent to `.d.ts` | — |
+| 8 — a constraint property that resolves the input type before the output type | **fixed** | [microsoft/TypeScript#64413](https://github.com/microsoft/TypeScript/pull/64413) |
 
 On the composed branch, fixtures 03, 05 and 06 all go to 0. The Zod corpus stays at 22 with an identical error set, conformance is clean (exit 0, 0 baselines moved), and planted errors at depths 1 through 5 are all rejected — on real Zod, not only the micro-library. Limitation 1 is pinned as inherent by a regression test: removing the single-candidate gate resolves the wrong overload and reports a diagnostic from a rejected candidate.
 
@@ -184,6 +185,24 @@ This is why `z.lazy` gets no benefit and cannot be deprecated. An un-annotated `
 ## Limitation 7 — declaration emit still elides the recursion
 
 Under both compilers, declaration emit writes `Out</*elided*/ any>` at each recursive point, with no error. Pre-existing and not a regression, but it means a library shipping `.d.ts` files loses the recursive type at the package boundary regardless.
+
+## Limitation 8 — a constraint property that resolves the input type before the output type
+
+Added after [microsoft/TypeScript#64311](https://github.com/microsoft/TypeScript/pull/64311) merged. Baseline is the `7.1.0-dev.20260924.1` nightly, candidate a build of [microsoft/TypeScript#64413](https://github.com/microsoft/TypeScript/pull/64413) at `e71379ff1c`. Tracked in [microsoft/TypeScript#64415](https://github.com/microsoft/TypeScript/issues/64415).
+
+Zod declares its `~standard` property on the base interface as `StandardProps<input<this>, output<this>>`, and every schema interface redeclares it through a subtype. The constraint check of `array(Tree)` binds `this` to the inferred type and resolves `input<this>` first. The input mapped type reads the getter in its `as` clause. That re-entry is allowed, the getter body then asks for `output<this>` through `.default([])`, and that second, uncached demand is the cycle. Fixture 08: baseline 1, candidate 0.
+
+Variants of the base declaration, all on the nightly:
+
+| base declaration | result |
+| --- | --- |
+| `StandardProps<input<this>, output<this>>` | fails |
+| `StandardProps<T["input"], T["output"]>`, no `this`, the derived interface keeps its own | fails |
+| `StandardProps<unknown, output<this>>` | resolves |
+| `StandardProps<input<this>, unknown>` | fails |
+| the same interface with its parameter order swapped, so `output<this>` is instantiated first | resolves |
+
+So the resolution order of the two conditionals is what trips it, not the `this` reference, and a rewrite that keeps the property typed only holds while the output is demanded first. #64413 defers the constraint check instead and resolves every variant.
 
 ---
 
