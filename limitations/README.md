@@ -25,6 +25,8 @@ Measured against [`jakebailey/TypeScript@e707147a48`](https://github.com/jakebai
 | --- | --- | --- |
 | [`08-limit-standard-property`](08-limit-standard-property.ts) | 1 | **0** |
 
+Fixed on main by [microsoft/TypeScript#64481](https://github.com/microsoft/TypeScript/pull/64481): a build of upstream `f9b3c564c6` also gives 0.
+
 Counts are `TS7022` + `TS7023` ("implicitly has type `any`"). Zero means the recursion resolved.
 
 The `reveal` line at the bottom of each fixture errors on purpose: assigning to `never` makes the compiler print the resolved type in the error message. That is how to tell a genuine resolution from a collapse to `any` — **an error count alone cannot**, because under `noErrorTruncation` the printer renders a recursive type's cycle point as `any` too.

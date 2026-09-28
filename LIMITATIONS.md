@@ -15,7 +15,7 @@ Three of these limitations have since been fixed and the fixes compose on one br
 | 5 — a context-sensitive sibling in the same call | unattempted | — |
 | 6 — a callback passed directly as an argument | **fixed** | [`attempt-argument`](https://github.com/colinhacks/TypeScript/tree/attempt-argument) |
 | 7 — declaration emit still elides the recursion | inherent to `.d.ts` | — |
-| 8 — a constraint property that resolves the input type before the output type | **fixed** | [microsoft/TypeScript#64413](https://github.com/microsoft/TypeScript/pull/64413) |
+| 8 — a constraint property that resolves the input type before the output type | **fixed on main** | [microsoft/TypeScript#64481](https://github.com/microsoft/TypeScript/pull/64481) |
 
 On the composed branch, fixtures 03, 05 and 06 all go to 0. The Zod corpus stays at 22 with an identical error set, conformance is clean (exit 0, 0 baselines moved), and planted errors at depths 1 through 5 are all rejected — on real Zod, not only the micro-library. Limitation 1 is pinned as inherent by a regression test: removing the single-candidate gate resolves the wrong overload and reports a diagnostic from a rejected candidate.
 
@@ -203,6 +203,8 @@ Variants of the base declaration, all on the nightly:
 | the same interface with its parameter order swapped, so `output<this>` is instantiated first | resolves |
 
 So the resolution order of the two conditionals is what trips it, not the `this` reference, and a rewrite that keeps the property typed only holds while the output is demanded first. #64413 defers the constraint check instead and resolves every variant.
+
+[microsoft/TypeScript#64481](https://github.com/microsoft/TypeScript/pull/64481), merged 2026-09-28, fixes it on main: a mapped type over an intersection of mappings of the same object type no longer reduces the intersection, so the input side never reads the getter. Every variant above resolves on upstream `f9b3c564c6`, and fixture 08 goes 1 → 0.
 
 ---
 
